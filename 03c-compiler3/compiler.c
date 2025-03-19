@@ -112,21 +112,6 @@ void IF() {
   }
 }
 
-void doWhile() {
-  int doBegin = nextLabel();
-  int doEnd = nextLabel();
-  emit("(L%d)\n", doBegin);
-  skip("do");
-  STMT();
-  skip("while");
-  skip("(");
-  E();
-  skip(")");
-  emit("if T%d goto L%d\n", doBegin, doEnd);
-  emit("goto L%d\n", doBegin);
-  emit("(L%d)\n", doEnd);
-}
-
 // DOWHILE = do STMT while (E);
 
 // STMT = WHILE | BLOCK | IF | DOWHILE | ASSIGN
