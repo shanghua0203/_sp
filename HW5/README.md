@@ -1,5 +1,5 @@
-sun.c
--
+# sun.c
+***readme.md格式參照林沛欣的***
 1. 執行**sum.c**  
    ```
     gcc sum.c 
