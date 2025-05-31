@@ -1,0 +1,65 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import sys
+import time
+import threading
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+start_time = time.time()
+
+header = {
+    'referer': 'https://ssr1.scrape.center/',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0'
+}
+
+movie_info = {'名稱': [], '類別': [], '國家': [], '時長': [], '上映時間': [], '分數': []}
+lock = threading.Lock()  # 鎖，避免多線程同時寫入資料造成錯誤
+
+def fetch_page(page):
+    url = f'https://ssr1.scrape.center/page/{page}'
+    response = requests.get(url, headers=header)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    result = soup.find_all(name='div', class_="p-h el-col el-col-24 el-col-xs-9 el-col-sm-13 el-col-md-16")
+    score = soup.find_all(name='p', class_='score m-t-md m-b-n-sm')
+
+    local_info = {'名稱': [], '類別': [], '國家': [], '時長': [], '上映時間': [], '分數': []}
+    for i in range(len(result)):
+        local_info['名稱'].append(result[i].h2.string)
+
+        button_list = result[i].find_all(name='button', class_="el-button category el-button--primary el-button--mini")
+        move_type = ','.join(btn.span.string for btn in button_list)
+        local_info['類別'].append(move_type)
+
+        info_list = result[i].find_all(name='div', class_='m-v-sm info')
+        span_list = info_list[0].find_all(name='span')
+        local_info['國家'].append(span_list[0].string)
+        local_info['時長'].append(span_list[2].string)
+
+        span_list = info_list[1].find_all(name='span')
+        local_info['上映時間'].append(span_list[0].string if len(span_list) > 0 else '')
+        local_info['分數'].append(score[i].string.strip())
+
+    with lock:  # 確保只有一個 thread 在寫入 movie_info
+        for key in movie_info:
+            movie_info[key].extend(local_info[key])
+
+threads = []
+
+# 建立並啟動多個執行緒
+for page in range(1, 11):
+    thread = threading.Thread(target=fetch_page, args=(page,))
+    thread.start()
+    threads.append(thread)
+
+# 等待所有執行緒結束
+for thread in threads:
+    thread.join()
+
+data = pd.DataFrame(movie_info)
+print(data)
+
+end_time = time.time()
+print(f"\n執行時間：{end_time - start_time:.2f} 秒")
